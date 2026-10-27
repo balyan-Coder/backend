@@ -7,7 +7,7 @@ the banking service inside explicit transactions.
 
 from __future__ import annotations
 
-LATEST_SCHEMA_VERSION = 2
+LATEST_SCHEMA_VERSION = 3
 
 MIGRATIONS: list[tuple[int, tuple[str, ...]]] = [
     (
@@ -183,6 +183,33 @@ MIGRATIONS: list[tuple[int, tuple[str, ...]]] = [
             # ledger keeps the recipient label and account number directly.
             "ALTER TABLE transactions ADD COLUMN counterparty_label TEXT",
             "ALTER TABLE transactions ADD COLUMN counterparty_external_number TEXT",
+        ),
+    ),
+    (
+        3,
+        (
+            """
+            CREATE TABLE fund_requests (
+                id                INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+                account_id        INTEGER NOT NULL REFERENCES accounts(id) ON DELETE RESTRICT,
+                amount_paise      INTEGER NOT NULL CHECK (amount_paise > 0),
+                reason            TEXT,
+                status            TEXT NOT NULL DEFAULT 'pending'
+                                  CHECK (status IN ('pending', 'approved', 'rejected', 'fulfilled')),
+                requested_by      INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+                reviewed_by       INTEGER REFERENCES users(id) ON DELETE RESTRICT,
+                reviewed_at       TEXT,
+                fulfilled_by      INTEGER REFERENCES users(id) ON DELETE RESTRICT,
+                fulfilled_at      TEXT,
+                transaction_id    INTEGER REFERENCES transactions(id) ON DELETE RESTRICT,
+                created_at        TEXT NOT NULL,
+                updated_at        TEXT NOT NULL
+            )
+            """,
+            "CREATE INDEX idx_fund_requests_user ON fund_requests(user_id)",
+            "CREATE INDEX idx_fund_requests_status ON fund_requests(status)",
+            "CREATE INDEX idx_fund_requests_created ON fund_requests(created_at)",
         ),
     ),
 ]

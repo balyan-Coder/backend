@@ -16,9 +16,10 @@ from typing import Any
 
 from app.config import Settings
 from app.database import Database
-from app.errors import BankingError, ConflictError, NotFoundError, ValidationError
+from app.errors import BankingError, ConflictError, NotFoundError, PermissionError, ValidationError
 from app.repositories.accounts import AccountRepository
 from app.repositories.audit import AuditRepository
+from app.repositories.fund_requests import FundRequestRepository
 from app.repositories.settings import SettingsRepository
 from app.repositories.transactions import TransactionRepository
 from app.repositories.transfers import TransferRepository
@@ -58,6 +59,7 @@ class BankingService:
         self.transfers = TransferRepository()
         self.audit = AuditRepository()
         self.app_settings = SettingsRepository()
+        self.fund_requests = FundRequestRepository()
 
     # ------------------------------------------------------------------ helpers
     def _own_account(self, conn: sqlite3.Connection, user_id: int) -> dict[str, Any]:
@@ -1180,6 +1182,148 @@ class BankingService:
         if row is None:
             raise NotFoundError("Transaction not found.")
         return self.public_transaction(row)
+
+    # ------------------------------------------------------------ fund requests
+    def create_fund_request(
+        self,
+        *,
+        user_id: int,
+        amount: Decimal,
+        reason: str | None,
+    ) -> dict[str, Any]:
+        amount_paise = decimal_to_paise(amount)
+        reason = validate_description(reason)
+        now = iso()
+        request_id = 0
+        with self.db.transaction() as conn:
+            account = self._own_account(conn, user_id)
+            if str(account["status"]) != "active":
+                raise BankingError(
+                    "This account is not active. Fund requests are disabled.",
+                    code="account_inactive",
+                )
+            request_id = self.fund_requests.create(
+                conn,
+                user_id=user_id,
+                account_id=int(account["id"]),
+                amount_paise=amount_paise,
+                reason=reason or "Funds requested",
+                requested_by=user_id,
+                now=now,
+            )
+        with self.db.connection() as conn:
+            row = self.fund_requests.get_by_id_with_details(conn, request_id)
+        return row or {}
+
+    def list_my_fund_requests(self, *, user_id: int) -> list[dict[str, Any]]:
+        with self.db.connection() as conn:
+            return self.fund_requests.list_by_user(conn, user_id)
+
+    def list_fund_requests(self, *, user_id: int, status: str | None = None) -> list[dict[str, Any]]:
+        if not self._is_owner_user(user_id):
+            raise PermissionError("Only the owner can view fund requests.")
+        with self.db.connection() as conn:
+            return self.fund_requests.list_all(conn, status)
+
+    def approve_fund_request(self, *, owner_user_id: int, request_id: int) -> dict[str, Any]:
+        if not self._is_owner_user(owner_user_id):
+            raise PermissionError("Only the owner can approve fund requests.")
+        now = iso()
+        with self.db.transaction() as conn:
+            fr = self.fund_requests.get_by_id(conn, request_id)
+            if not fr:
+                raise NotFoundError("Fund request not found.")
+            if fr["status"] != "pending":
+                raise BankingError("Only pending requests can be approved.", code="invalid_state")
+            self.fund_requests.update_status(conn, request_id, "approved", reviewed_by=owner_user_id, now=now)
+        with self.db.connection() as conn:
+            return self.fund_requests.get_by_id_with_details(conn, request_id)
+
+    def reject_fund_request(self, *, owner_user_id: int, request_id: int) -> dict[str, Any]:
+        if not self._is_owner_user(owner_user_id):
+            raise PermissionError("Only the owner can reject fund requests.")
+        now = iso()
+        with self.db.transaction() as conn:
+            fr = self.fund_requests.get_by_id(conn, request_id)
+            if not fr:
+                raise NotFoundError("Fund request not found.")
+            if fr["status"] != "pending":
+                raise BankingError("Only pending requests can be rejected.", code="invalid_state")
+            self.fund_requests.update_status(conn, request_id, "rejected", reviewed_by=owner_user_id, now=now)
+        with self.db.connection() as conn:
+            return self.fund_requests.get_by_id_with_details(conn, request_id)
+
+    def fulfill_fund_request(self, *, owner_user_id: int, request_id: int) -> dict[str, Any]:
+        if not self._is_owner_user(owner_user_id):
+            raise PermissionError("Only the owner can fulfill fund requests.")
+        amount_paise = 0
+        account_id = 0
+        user_id_req = 0
+        try:
+            now = iso()
+            reference = new_reference("TXN")
+            with self.db.transaction() as conn:
+                fr = self.fund_requests.get_by_id(conn, request_id)
+                if not fr:
+                    raise NotFoundError("Fund request not found.")
+                if fr["status"] not in ("approved", "pending"):
+                    raise BankingError("Request must be approved or pending to fulfill.", code="invalid_state")
+                account_id = int(fr["account_id"])
+                user_id_req = int(fr["user_id"])
+                amount_paise = int(fr["amount_paise"])
+                account = self.accounts.get_by_id(conn, account_id)
+                if not account or str(account["status"]) != "active":
+                    raise BankingError("Target account is not active.", code="account_inactive")
+                username_row = conn.execute(
+                    "SELECT username FROM users WHERE id = ?", (owner_user_id,)
+                ).fetchone()
+                username = str(username_row["username"]) if username_row else str(owner_user_id)
+                before = int(account["balance_paise"])
+                if not self.accounts.credit(conn, account_id, amount_paise, now):
+                    raise BankingError("The deposit could not be completed.", code="deposit_failed")
+                after = before + amount_paise
+                transaction_id = self.transactions.insert(
+                    conn,
+                    reference=reference,
+                    account_id=account_id,
+                    counterparty_account_id=None,
+                    type_="deposit",
+                    direction="credit",
+                    amount_paise=amount_paise,
+                    balance_before_paise=before,
+                    balance_after_paise=after,
+                    status="success",
+                    description=f"Fund request #{request_id} fulfilled by owner",
+                    transfer_id=None,
+                    idempotency_key=None,
+                    created_at=now,
+                )
+                self.fund_requests.update_status(
+                    conn,
+                    request_id,
+                    "fulfilled",
+                    reviewed_by=owner_user_id,
+                    fulfilled_by=owner_user_id,
+                    transaction_id=transaction_id,
+                    now=now,
+                )
+                self.audit.log(
+                    conn,
+                    created_at=now,
+                    actor_user_id=owner_user_id,
+                    actor_username=username,
+                    action="bank.fund_request.fulfill",
+                    outcome="success",
+                    entity_type="fund_request",
+                    entity_id=request_id,
+                    details={"amount_paise": amount_paise, "credited_to_user_id": user_id_req},
+                )
+            with self.db.connection() as conn:
+                return self.fund_requests.get_by_id_with_details(conn, request_id)
+        except sqlite3.IntegrityError:
+            raise
+        except BankingError:
+            raise
 
     def all_transactions(
         self,

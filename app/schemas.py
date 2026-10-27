@@ -164,6 +164,33 @@ class MessageOut(BaseModel):
     message: str
 
 
+class FundRequestIn(BaseModel):
+    amount: Amount
+    reason: str | None = Field(default=None, max_length=200)
+
+
+class FundRequestOut(BaseModel):
+    id: int
+    user_id: int
+    account_id: int
+    amount_paise: int
+    reason: str | None = None
+    status: str
+    requested_by: int
+    reviewed_by: int | None = None
+    reviewed_at: str | None = None
+    fulfilled_by: int | None = None
+    fulfilled_at: str | None = None
+    transaction_id: int | None = None
+    created_at: str
+    updated_at: str
+    username: str | None = None
+    display_name: str | None = None
+    account_number: str | None = None
+    reviewed_by_username: str | None = None
+    fulfilled_by_username: str | None = None
+
+
 class ErrorOut(BaseModel):
     detail: str
     code: str

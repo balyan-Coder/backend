@@ -16,7 +16,13 @@ from app.deps import (
     get_banking_service,
     require_csrf,
 )
-from app.schemas import DepositIn, ResolveTransferIn, TransferIn, WithdrawIn
+from app.schemas import (
+    DepositIn,
+    FundRequestIn,
+    ResolveTransferIn,
+    TransferIn,
+    WithdrawIn,
+)
 from app.services.banking import BankingService
 from app.utils.money import paise_to_string
 from app.utils.time import utcnow
@@ -226,3 +232,76 @@ def get_transaction(
     return service.get_transaction(
         user_id=session.user_id, transaction_id=transaction_id
     )
+
+
+@router.post("/fund-requests")
+async def create_fund_request(
+    payload: FundRequestIn,
+    request: Request,
+    session: SessionContext = Depends(require_csrf),
+    _: SessionContext = Depends(banking_write_rate_limit),
+    service: BankingService = Depends(get_banking_service),
+) -> dict:
+    result = service.create_fund_request(
+        user_id=session.user_id,
+        amount=payload.amount,
+        reason=payload.reason,
+    )
+    await request.app.state.realtime.publish([])
+    return {"message": "Fund request submitted.", "request": result, "simulated": True}
+
+
+@router.get("/fund-requests/mine")
+def list_my_fund_requests(
+    session: SessionContext = Depends(banking_rate_limit),
+    service: BankingService = Depends(get_banking_service),
+) -> dict:
+    return {"requests": service.list_my_fund_requests(user_id=session.user_id)}
+
+
+@router.get("/fund-requests")
+def list_fund_requests(
+    session: SessionContext = Depends(banking_rate_limit),
+    service: BankingService = Depends(get_banking_service),
+    status: str | None = Query(None),
+) -> dict:
+    return {"requests": service.list_fund_requests(user_id=session.user_id, status=status)}
+
+
+@router.post("/fund-requests/{request_id}/approve")
+async def approve_fund_request(
+    request_id: int,
+    request: Request,
+    session: SessionContext = Depends(require_csrf),
+    _: SessionContext = Depends(banking_write_rate_limit),
+    service: BankingService = Depends(get_banking_service),
+) -> dict:
+    result = service.approve_fund_request(owner_user_id=session.user_id, request_id=request_id)
+    await request.app.state.realtime.publish([])
+    return {"message": "Fund request approved.", "request": result}
+
+
+@router.post("/fund-requests/{request_id}/reject")
+async def reject_fund_request(
+    request_id: int,
+    request: Request,
+    session: SessionContext = Depends(require_csrf),
+    _: SessionContext = Depends(banking_write_rate_limit),
+    service: BankingService = Depends(get_banking_service),
+) -> dict:
+    result = service.reject_fund_request(owner_user_id=session.user_id, request_id=request_id)
+    await request.app.state.realtime.publish([])
+    return {"message": "Fund request rejected.", "request": result}
+
+
+@router.post("/fund-requests/{request_id}/fulfill")
+async def fulfill_fund_request(
+    request_id: int,
+    request: Request,
+    session: SessionContext = Depends(require_csrf),
+    _: SessionContext = Depends(banking_write_rate_limit),
+    service: BankingService = Depends(get_banking_service),
+) -> dict:
+    result = service.fulfill_fund_request(owner_user_id=session.user_id, request_id=request_id)
+    await request.app.state.realtime.publish([])
+    return {"message": "Fund request fulfilled and credited.", "request": result}
