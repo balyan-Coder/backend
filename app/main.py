@@ -161,7 +161,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=list(settings.cors_origins),
+        allow_origins=[
+            *list(settings.cors_origins),
+            "https://gaurbank.netlify.app",
+        ],
         allow_credentials=True,
         allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Content-Type", "X-CSRF-Token"],
