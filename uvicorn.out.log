@@ -1,0 +1,44 @@
+INFO:     127.0.0.1:62149 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62149 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62149 - "GET /api/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62149 - "POST /api/transfers/resolve HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62149 - "POST /api/transfers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62151 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62151 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62151 - "POST /api/transfers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62151 - "POST /api/transfers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62152 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62153 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62158 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62638 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56568 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56568 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56568 - "GET /api/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56568 - "GET /api/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60722 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55974 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55975 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51168 - "GET /api/dashboard?period=30d HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51169 - "GET /api/dashboard?period=30d HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54555 - "GET /api/transactions?sort=created_at&order=desc&page=1&page_size=15 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62156 - "GET /api/transactions?sort=created_at&order=desc&page=1&page_size=15 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61917 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64492 - "GET /api/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60882 - "GET /api/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51361 - "GET /api/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62420 - "GET /api/members HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55640 - "GET /api/dashboard?period=30d HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59564 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54682 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54682 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62788 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58957 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57199 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63590 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54679 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52889 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58789 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64621 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49280 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61690 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53548 - "GET /health HTTP/1.1" 404 Not Found
